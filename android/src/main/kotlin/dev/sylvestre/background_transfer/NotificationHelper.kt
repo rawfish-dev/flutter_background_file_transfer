@@ -37,6 +37,8 @@ class NotificationHelper(private val context: Context) {
     }
 
     fun showStartNotification(type: String, taskId: String) {
+        // DISABLED: All library notifications disabled - apps manage their own notifications
+        /*
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(if (type == "download") "Download Started" else "Upload Started")
@@ -49,20 +51,25 @@ class NotificationHelper(private val context: Context) {
 
         try {
             NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
-            lastProgressUpdate[taskId] = 0
-            activeNotifications.add(taskId)
         } catch (e: SecurityException) {
             // Handle notification permission not granted
         }
+        */
+
+        // Track state without showing notification
+        lastProgressUpdate[taskId] = 0
+        activeNotifications.add(taskId)
     }
 
     fun updateProgressNotification(type: String, taskId: String, progress: Int) {
         // Don't update if we already showed completion notification
         if (!activeNotifications.contains(taskId)) return
-        
+
         // Only update if progress has changed significantly (at least 1%)
         if (lastProgressUpdate[taskId] == progress) return
-        
+
+        // DISABLED: All library notifications disabled - apps manage their own notifications
+        /*
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_sys_download)
             .setContentTitle(if (type == "download") "Downloading..." else "Uploading...")
@@ -75,11 +82,14 @@ class NotificationHelper(private val context: Context) {
 
         try {
             NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
-            lastProgressUpdate[taskId] = progress
-            activeNotifications.add(taskId)
         } catch (e: SecurityException) {
             // Handle notification permission not granted
         }
+        */
+
+        // Track state without showing notification
+        lastProgressUpdate[taskId] = progress
+        activeNotifications.add(taskId)
     }
 
     fun showCompleteNotification(type: String, taskId: String, error: Exception? = null) {
@@ -120,7 +130,9 @@ class NotificationHelper(private val context: Context) {
     fun showCancelNotification(type: String, taskId: String) {
         // Remove from active notifications to prevent further progress updates
         activeNotifications.remove(taskId)
-        
+
+        // DISABLED: All library notifications disabled - apps manage their own notifications
+        /*
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.stat_notify_error)
             .setContentTitle(if (type == "download") "Download Cancelled" else "Upload Cancelled")
@@ -132,10 +144,12 @@ class NotificationHelper(private val context: Context) {
 
         try {
             NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
-            // Clean up progress tracking
-            lastProgressUpdate.remove(taskId)
         } catch (e: SecurityException) {
             // Handle notification permission not granted
         }
+        */
+
+        // Clean up progress tracking
+        lastProgressUpdate.remove(taskId)
     }
 }
