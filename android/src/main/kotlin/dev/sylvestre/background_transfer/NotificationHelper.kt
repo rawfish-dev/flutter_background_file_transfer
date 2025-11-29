@@ -85,7 +85,12 @@ class NotificationHelper(private val context: Context) {
     fun showCompleteNotification(type: String, taskId: String, error: Exception? = null) {
         // Remove from active notifications to prevent further progress updates
         activeNotifications.remove(taskId)
-        
+
+        // DISABLED: Completion notifications create spam when uploading multiple files
+        // Apps should manage their own batch-level notifications instead
+        //
+        // Uncomment below to re-enable per-task completion notifications:
+        /*
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(if (error == null) android.R.drawable.stat_sys_download_done else android.R.drawable.stat_notify_error)
             .setContentTitle(
@@ -103,11 +108,13 @@ class NotificationHelper(private val context: Context) {
 
         try {
             NotificationManagerCompat.from(context).notify(taskId.hashCode(), notification)
-            // Clean up progress tracking
-            lastProgressUpdate.remove(taskId)
         } catch (e: SecurityException) {
             // Handle notification permission not granted
         }
+        */
+
+        // Clean up progress tracking
+        lastProgressUpdate.remove(taskId)
     }
 
     fun showCancelNotification(type: String, taskId: String) {
