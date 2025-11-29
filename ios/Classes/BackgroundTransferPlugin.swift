@@ -298,87 +298,110 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             }
             
             do {
-                // Create a temporary file for the multipart form data
-                let temporaryDir = FileManager.default.temporaryDirectory
-                let formDataFile = temporaryDir.appendingPathComponent("upload_\(taskId)_form")
-                
-                // Create multipart form data
-                let boundary = "Boundary-\(UUID().uuidString)"
-                var formData = Data()
-                
-                // Add form fields
-                for (key, value) in fields {
-                    formData.append("--\(boundary)\r\n".data(using: .utf8)!)
-                    formData.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
-                    formData.append("\(value)\r\n".data(using: .utf8)!)
-                }
-                
-                // Add file part header
-                formData.append("--\(boundary)\r\n".data(using: .utf8)!)
-                formData.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileUrl.lastPathComponent)\"\r\n".data(using: .utf8)!)
-                formData.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
-                
-                // Write initial form data
-                try formData.write(to: formDataFile)
-                
-                // Append file data in chunks
-                if let fileHandle = FileHandle(forWritingAtPath: formDataFile.path),
-                   let inputFileHandle = FileHandle(forReadingAtPath: fileUrl.path) {
-                    fileHandle.seekToEndOfFile()
-                    
-                    while true {
-                        let data = inputFileHandle.readData(ofLength: 1024 * 1024)
-                        if data.count == 0 { break }
-                        fileHandle.write(data)
-                    }
-                    
-                    // Write final boundary
-                    if let finalBoundaryData = "\r\n--\(boundary)--\r\n".data(using: .utf8) {
-                        fileHandle.write(finalBoundaryData)
-                    }
-                    
-                    fileHandle.closeFile()
-                    inputFileHandle.closeFile()
-                }
-                
-                // Create and configure upload request
-                var request = URLRequest(url: url)
-                request.httpMethod = "POST"
-                request.timeoutInterval = 3600 // 1 hour timeout
-                request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
-                
-                // Add custom headers
-                headers.forEach { key, value in
-                    request.setValue(value, forHTTPHeaderField: key)
-                }
-                
-                // Create and configure upload task
+                // Use simple POST for presigned URLs (B2, S3) when no form fields are provided
+                // Use multipart POST for services that require form fields
+                let uploadTask: URLSessionUploadTask
                 let completionId = self.getNextCompletionId()
-                let uploadTask = self.urlSession.uploadTask(with: request, fromFile: formDataFile)
-                uploadTask.taskDescription = "upload|\(taskId)|\(filePath)|\(completionId)"
-                uploadTask.priority = URLSessionTask.highPriority
-                
-                os_log("Starting upload task %{public}@ for URL: %{public}@", log: logger, type: .debug, taskId, uploadUrl)
-                
+
+                if fields.isEmpty() {
+                    // Simple POST with raw file body for B2/S3 presigned URLs
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.timeoutInterval = 3600 // 1 hour timeout
+
+                    // Add custom headers (including Content-Type from server)
+                    headers.forEach { key, value in
+                        request.setValue(value, forHTTPHeaderField: key)
+                    }
+
+                    // Create upload task directly from file
+                    uploadTask = self.urlSession.uploadTask(with: request, fromFile: fileUrl)
+                    uploadTask.taskDescription = "upload|\(taskId)|\(filePath)|\(completionId)"
+                    uploadTask.priority = URLSessionTask.highPriority
+
+                    os_log("Starting simple POST upload task %{public}@ for URL: %{public}@", log: logger, type: .debug, taskId, uploadUrl)
+                } else {
+                    // Multipart form upload for services that require form fields
+                    let temporaryDir = FileManager.default.temporaryDirectory
+                    let formDataFile = temporaryDir.appendingPathComponent("upload_\(taskId)_form")
+
+                    // Create multipart form data
+                    let boundary = "Boundary-\(UUID().uuidString)"
+                    var formData = Data()
+
+                    // Add form fields
+                    for (key, value) in fields {
+                        formData.append("--\(boundary)\r\n".data(using: .utf8)!)
+                        formData.append("Content-Disposition: form-data; name=\"\(key)\"\r\n\r\n".data(using: .utf8)!)
+                        formData.append("\(value)\r\n".data(using: .utf8)!)
+                    }
+
+                    // Add file part header
+                    formData.append("--\(boundary)\r\n".data(using: .utf8)!)
+                    formData.append("Content-Disposition: form-data; name=\"file\"; filename=\"\(fileUrl.lastPathComponent)\"\r\n".data(using: .utf8)!)
+                    formData.append("Content-Type: application/octet-stream\r\n\r\n".data(using: .utf8)!)
+
+                    // Write initial form data
+                    try formData.write(to: formDataFile)
+
+                    // Append file data in chunks
+                    if let fileHandle = FileHandle(forWritingAtPath: formDataFile.path),
+                       let inputFileHandle = FileHandle(forReadingAtPath: fileUrl.path) {
+                        fileHandle.seekToEndOfFile()
+
+                        while true {
+                            let data = inputFileHandle.readData(ofLength: 1024 * 1024)
+                            if data.count == 0 { break }
+                            fileHandle.write(data)
+                        }
+
+                        // Write final boundary
+                        if let finalBoundaryData = "\r\n--\(boundary)--\r\n".data(using: .utf8) {
+                            fileHandle.write(finalBoundaryData)
+                        }
+
+                        fileHandle.closeFile()
+                        inputFileHandle.closeFile()
+                    }
+
+                    // Create and configure upload request
+                    var request = URLRequest(url: url)
+                    request.httpMethod = "POST"
+                    request.timeoutInterval = 3600 // 1 hour timeout
+                    request.setValue("multipart/form-data; boundary=\(boundary)", forHTTPHeaderField: "Content-Type")
+
+                    // Add custom headers
+                    headers.forEach { key, value in
+                        request.setValue(value, forHTTPHeaderField: key)
+                    }
+
+                    // Create upload task from multipart form file
+                    uploadTask = self.urlSession.uploadTask(with: request, fromFile: formDataFile)
+                    uploadTask.taskDescription = "upload|\(taskId)|\(filePath)|\(completionId)"
+                    uploadTask.priority = URLSessionTask.highPriority
+
+                    os_log("Starting multipart upload task %{public}@ for URL: %{public}@", log: logger, type: .debug, taskId, uploadUrl)
+
+                    // Schedule cleanup of temporary file
+                    DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 300) {
+                        try? FileManager.default.removeItem(at: formDataFile)
+                    }
+                }
+
                 // Store completion handler
                 self.taskCompletions[uploadTask.taskDescription ?? ""] = completion
-                
+
                 // Update status before starting
                 if var details = self.transferDetails[taskId] {
                     details.status = "active"
                     self.transferDetails[taskId] = details
                 }
-                
+
                 // Add to active tasks and start
                 self.uploadTasks.append(uploadTask)
                 uploadTask.resume()
-                
+
                 self.showTransferStartNotification(type: "upload", taskId: taskId)
-                
-                // Schedule cleanup of temporary file
-                DispatchQueue.global(qos: .utility).asyncAfter(deadline: .now() + 300) {
-                    try? FileManager.default.removeItem(at: formDataFile)
-                }
             } catch {
                 os_log("Error preparing upload: %{public}@", log: logger, type: .error, error.localizedDescription)
                 self.showTransferCompleteNotification(type: "upload", taskId: taskId, error: error)

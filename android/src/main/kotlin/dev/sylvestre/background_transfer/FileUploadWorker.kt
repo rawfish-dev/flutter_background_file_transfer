@@ -60,9 +60,6 @@ class FileUploadWorker(
             .readTimeout(30, TimeUnit.SECONDS)
             .build()
 
-        val multipartBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
-        fields.forEach { (key, value) -> multipartBuilder.addFormDataPart(key, value) }
-
         var lastProgress = -1
         val mimeType = getMimeType(file.absolutePath)
         val fileRequestBody = file.asRequestBody(mimeType.toMediaTypeOrNull())
@@ -88,13 +85,27 @@ class FileUploadWorker(
             }
         }
 
-        multipartBuilder.addFormDataPart("file", file.name, countingRequestBody)
+        // Use simple POST for presigned URLs (B2, S3) when no form fields are provided
+        // Use multipart POST for services that require form fields
+        val request = if (fields.isEmpty()) {
+            // Simple POST with raw file body for B2/S3 presigned URLs
+            Request.Builder()
+                .url(uploadUrl)
+                .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+                .post(countingRequestBody)
+                .build()
+        } else {
+            // Multipart form upload for services that require form fields
+            val multipartBuilder = MultipartBody.Builder().setType(MultipartBody.FORM)
+            fields.forEach { (key, value) -> multipartBuilder.addFormDataPart(key, value) }
+            multipartBuilder.addFormDataPart("file", file.name, countingRequestBody)
 
-        val request = Request.Builder()
-            .url(uploadUrl)
-            .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
-            .post(multipartBuilder.build())
-            .build()
+            Request.Builder()
+                .url(uploadUrl)
+                .apply { headers.forEach { (k, v) -> addHeader(k, v) } }
+                .post(multipartBuilder.build())
+                .build()
+        }
 
         try {
             Log.i(TAG, "Executing upload request")
