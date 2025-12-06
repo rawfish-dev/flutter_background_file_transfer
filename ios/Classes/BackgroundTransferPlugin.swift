@@ -303,7 +303,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
                 let uploadTask: URLSessionUploadTask
                 let completionId = self.getNextCompletionId()
 
-                if fields.isEmpty() {
+                if fields.isEmpty {
                     // Simple POST with raw file body for B2/S3 presigned URLs
                     var request = URLRequest(url: url)
                     request.httpMethod = "POST"
