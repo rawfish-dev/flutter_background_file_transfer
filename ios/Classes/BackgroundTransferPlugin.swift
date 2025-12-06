@@ -230,7 +230,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             self.downloadTasks.append(downloadTask)
             downloadTask.resume()
             
-            self.showTransferStartNotification(type: "download", taskId: taskId)
+            // self.showTransferStartNotification(type: "download", taskId: taskId)
         }
         
         result(taskId)
@@ -266,7 +266,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             guard let self = self,
                   let url = URL(string: uploadUrl),
                   url.scheme != nil else {
-                self?.showTransferCompleteNotification(type: "upload", taskId: taskId, 
+                // self?.showTransferCompleteNotification(type: "upload", taskId: taskId, 
                     error: NSError(domain: "BackgroundTransferPlugin", code: -1002, 
                                  userInfo: [NSLocalizedDescriptionKey: "Invalid upload URL"]))
                 completion()
@@ -277,7 +277,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             let fileUrl: URL
             if filePath.hasPrefix("file://") {
                 guard let url = URL(string: filePath) else {
-                    self.showTransferCompleteNotification(type: "upload", taskId: taskId, 
+                    // self.showTransferCompleteNotification(type: "upload", taskId: taskId, 
                         error: NSError(domain: "BackgroundTransferPlugin", code: -1002, 
                                      userInfo: [NSLocalizedDescriptionKey: "Invalid file URL"]))
                     completion()
@@ -290,7 +290,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             
             guard FileManager.default.fileExists(atPath: fileUrl.path),
                   FileManager.default.isReadableFile(atPath: fileUrl.path) else {
-                self.showTransferCompleteNotification(type: "upload", taskId: taskId,
+                // self.showTransferCompleteNotification(type: "upload", taskId: taskId,
                     error: NSError(domain: "BackgroundTransferPlugin", code: -1002,
                                  userInfo: [NSLocalizedDescriptionKey: "File not found or not readable"]))
                 completion()
@@ -401,10 +401,10 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
                 self.uploadTasks.append(uploadTask)
                 uploadTask.resume()
 
-                self.showTransferStartNotification(type: "upload", taskId: taskId)
+                // self.showTransferStartNotification(type: "upload", taskId: taskId)
             } catch {
                 os_log("Error preparing upload: %{public}@", log: logger, type: .error, error.localizedDescription)
-                self.showTransferCompleteNotification(type: "upload", taskId: taskId, error: error)
+                // self.showTransferCompleteNotification(type: "upload", taskId: taskId, error: error)
                 completion()
             }
         }
@@ -501,7 +501,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             scheduleTaskCleanup(taskId: taskId)
             
             // Show cancellation notification
-            showCancelNotification(type: type, taskId: taskId)
+            // showCancelNotification(type: type, taskId: taskId)
         }
         
         // Clean up event handlers and progress tracking
@@ -541,7 +541,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
         }
     }
 
-    private func showCancelNotification(type: String, taskId: String) {
+    // private func showCancelNotification(type: String, taskId: String) {
         let content = UNMutableNotificationContent()
         content.title = type == "download" ? "Download Cancelled" : "Upload Cancelled"
         content.body = type == "download" ? "Your download was cancelled" : "Your upload was cancelled"
@@ -579,10 +579,17 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
                 details.status = "completed"
                 transferDetails[taskId] = details
             }
-            showTransferCompleteNotification(type: "download", taskId: taskId)
+            // showTransferCompleteNotification(type: "download", taskId: taskId)
+
+            // Send final progress and completion to stream
+            streamHandlers[taskId]?.sendProgress(1.0)
+            streamHandlers[taskId]?.sendCompletion()
         } catch {
             os_log("Error moving downloaded file: %{public}@", log: logger, type: .error, error.localizedDescription)
-            showTransferCompleteNotification(type: "download", taskId: taskId, error: error)
+            // showTransferCompleteNotification(type: "download", taskId: taskId, error: error)
+
+            // Send error to progress stream
+            streamHandlers[taskId]?.sendError(error)
         }
         
         // Call completion handler
@@ -645,7 +652,10 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
                 details.status = "failed"
                 transferDetails[taskId] = details
             }
-            showTransferCompleteNotification(type: type, taskId: taskId, error: error)
+            // showTransferCompleteNotification(type: type, taskId: taskId, error: error)
+
+            // Send error to progress stream
+            streamHandlers[taskId]?.sendError(error)
         } else {
             os_log("Transfer completed successfully: %{public}@", log: logger, type: .debug, taskId)
             // For uploads, we mark completion here. Downloads are marked in didFinishDownloadingTo
@@ -654,7 +664,11 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
                     details.status = "completed"
                     transferDetails[taskId] = details
                 }
-                showTransferCompleteNotification(type: type, taskId: taskId)
+                // showTransferCompleteNotification(type: type, taskId: taskId)
+
+                // Send final progress and completion to stream
+                streamHandlers[taskId]?.sendProgress(1.0)
+                streamHandlers[taskId]?.sendCompletion()
             }
         }
         
@@ -670,7 +684,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
     
 
 
-    private func showTransferStartNotification(type: String, taskId: String) {
+    // private func showTransferStartNotification(type: String, taskId: String) {
         let content = UNMutableNotificationContent()
         content.title = type == "download" ? "Download Started" : "Upload Started"
         content.body = type == "download" ? "Your download has begun" : "Your upload has begun"
@@ -687,7 +701,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
         }
     }
     
-    private func showTransferCompleteNotification(type: String, taskId: String, error: Error? = nil) {
+    // private func showTransferCompleteNotification(type: String, taskId: String, error: Error? = nil) {
         let content = UNMutableNotificationContent()
         
         if let error = error {
@@ -835,6 +849,28 @@ class ProgressStreamHandler: NSObject, FlutterStreamHandler {
                 sink(progress)
             } else {
                 os_log("No event sink available for task: %{public}@", log: logger, type: .debug, self.taskId)
+            }
+        }
+    }
+
+    func sendCompletion() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if let sink = self.eventSink {
+                os_log("Sending completion for task: %{public}@", log: logger, type: .debug, self.taskId)
+                sink(FlutterEndOfStreamEvent)
+                self.eventSink = nil
+            }
+        }
+    }
+
+    func sendError(_ error: Error) {
+        DispatchQueue.main.async { [weak self] in
+            guard let self = self else { return }
+            if let sink = self.eventSink {
+                os_log("Sending error for task: %{public}@", log: logger, type: .debug, self.taskId)
+                sink(FlutterError(code: "TRANSFER_FAILED", message: error.localizedDescription, details: nil))
+                self.eventSink = nil
             }
         }
     }
