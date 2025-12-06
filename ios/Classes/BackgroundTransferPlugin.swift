@@ -266,9 +266,9 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             guard let self = self,
                   let url = URL(string: uploadUrl),
                   url.scheme != nil else {
-                // self?.showTransferCompleteNotification(type: "upload", taskId: taskId, 
-                    error: NSError(domain: "BackgroundTransferPlugin", code: -1002, 
-                                 userInfo: [NSLocalizedDescriptionKey: "Invalid upload URL"]))
+                // self?.showTransferCompleteNotification(type: "upload", taskId: taskId,
+                //     error: NSError(domain: "BackgroundTransferPlugin", code: -1002,
+                //                  userInfo: [NSLocalizedDescriptionKey: "Invalid upload URL"]))
                 completion()
                 return
             }
@@ -277,9 +277,9 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             let fileUrl: URL
             if filePath.hasPrefix("file://") {
                 guard let url = URL(string: filePath) else {
-                    // self.showTransferCompleteNotification(type: "upload", taskId: taskId, 
-                        error: NSError(domain: "BackgroundTransferPlugin", code: -1002, 
-                                     userInfo: [NSLocalizedDescriptionKey: "Invalid file URL"]))
+                    // self.showTransferCompleteNotification(type: "upload", taskId: taskId,
+                    //     error: NSError(domain: "BackgroundTransferPlugin", code: -1002,
+                    //                  userInfo: [NSLocalizedDescriptionKey: "Invalid file URL"]))
                     completion()
                     return
                 }
@@ -291,8 +291,8 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
             guard FileManager.default.fileExists(atPath: fileUrl.path),
                   FileManager.default.isReadableFile(atPath: fileUrl.path) else {
                 // self.showTransferCompleteNotification(type: "upload", taskId: taskId,
-                    error: NSError(domain: "BackgroundTransferPlugin", code: -1002,
-                                 userInfo: [NSLocalizedDescriptionKey: "File not found or not readable"]))
+                //     error: NSError(domain: "BackgroundTransferPlugin", code: -1002,
+                //                  userInfo: [NSLocalizedDescriptionKey: "File not found or not readable"]))
                 completion()
                 return
             }
@@ -858,7 +858,7 @@ class ProgressStreamHandler: NSObject, FlutterStreamHandler {
             guard let self = self else { return }
             if let sink = self.eventSink {
                 os_log("Sending completion for task: %{public}@", log: logger, type: .debug, self.taskId)
-                sink(FlutterEndOfStreamEvent)
+                sink(FlutterEndOfEventStream)
                 self.eventSink = nil
             }
         }
