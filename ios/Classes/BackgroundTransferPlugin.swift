@@ -541,7 +541,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
         }
     }
 
-    // private func showCancelNotification(type: String, taskId: String) {
+    private func showCancelNotification(type: String, taskId: String) {
         let content = UNMutableNotificationContent()
         content.title = type == "download" ? "Download Cancelled" : "Upload Cancelled"
         content.body = type == "download" ? "Your download was cancelled" : "Your upload was cancelled"
@@ -684,7 +684,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
     
 
 
-    // private func showTransferStartNotification(type: String, taskId: String) {
+    private func showTransferStartNotification(type: String, taskId: String) {
         let content = UNMutableNotificationContent()
         content.title = type == "download" ? "Download Started" : "Upload Started"
         content.body = type == "download" ? "Your download has begun" : "Your upload has begun"
@@ -701,7 +701,7 @@ public class BackgroundTransferPlugin: NSObject, FlutterPlugin, URLSessionTaskDe
         }
     }
     
-    // private func showTransferCompleteNotification(type: String, taskId: String, error: Error? = nil) {
+    private func showTransferCompleteNotification(type: String, taskId: String, error: Error? = nil) {
         let content = UNMutableNotificationContent()
         
         if let error = error {
